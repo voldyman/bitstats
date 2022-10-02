@@ -44,6 +44,8 @@ func (s *Stats) Serialize() ([]byte, error) {
 }
 
 func (s *Stats) Deserialize(data []byte) error {
+	n := New()
+	s.partitions = n.partitions
 	obj := &jsonStatsRepr{
 		Partitions: make(map[string][]*jsonEventsRepr),
 	}

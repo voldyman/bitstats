@@ -107,3 +107,25 @@ func TestMarshaling(t *testing.T) {
 		checkDeserializedStats(t, jsonStats)
 	})
 }
+
+func TestRemoveMinPartition(t *testing.T) {
+	s := New()
+	s.Add("2022-01-01", "test", 1)
+	s.Add("2022-01-02", "test", 1)
+	s.Add("2022-01-03", "test", 1)
+	assert.Equal(t, 3, s.PartitionsCount())
+
+	rmName, ok := s.RemoveMinPartition()
+	assert.True(t, ok)
+	assert.Equal(t, "2022-01-01", rmName)
+
+	assert.Equal(t, 2, s.PartitionsCount())
+	assert.Equal(t, []string{"2022-01-02", "2022-01-03"}, s.Partitions(), "oldest date should be removed")
+
+	for s.PartitionsCount() > 0 {
+		_, ok := s.RemoveMinPartition()
+		assert.True(t, ok)
+	}
+	assert.Equal(t, 0, s.PartitionsCount())
+
+}

@@ -78,8 +78,25 @@ func (s *Stats) RemovePartition(partition string) bool {
 	return removed
 }
 
+// PartitionsCount returns the number of partitions
 func (s *Stats) PartitionsCount() int {
 	return s.partitions.Len()
+}
+
+func (s *Stats) RemoveMinPartition() (string, bool) {
+	part, ok := s.partitions.PopMin()
+	if !ok {
+		return "", false
+	}
+	return string(part.name), true
+}
+
+func (s *Stats) RemoveMaxPartition() (string, bool) {
+	part, ok := s.partitions.PopMax()
+	if !ok {
+		return "", false
+	}
+	return string(part.name), true
 }
 
 func (s *Stats) EventsCount(partition string) (int, bool) {
