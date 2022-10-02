@@ -48,7 +48,8 @@ func (s *Stats) Add(partition, event string, value uint64) bool {
 		e.initialize()
 		part.events.Set(e)
 	}
-	return eventExists || e.values.CheckedAdd(value)
+	added := e.values.CheckedAdd(value)
+	return eventExists || added
 }
 
 // Remove an event from the stats, returns

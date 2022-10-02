@@ -60,3 +60,13 @@ func (s *Stats) Deserialize(data []byte) error {
 	}
 	return nil
 }
+
+// MarshalJSON converts stats to json
+func (s *Stats) MarshalJSON() ([]byte, error) {
+	return s.Serialize()
+}
+
+// UnmarshalJSON loads json to stats
+func (s *Stats) UnmarshalJSON(data []byte) error {
+	return s.Deserialize(data)
+}

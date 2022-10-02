@@ -1,6 +1,7 @@
 package bitstats
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,48 +46,64 @@ func TestEventsByPrefix(t *testing.T) {
 func TestMarshaling(t *testing.T) {
 	stats := New()
 	stats.Add("partition", "msg:1", 1)
+	stats.Add("partition", "msg:1", 2)
 	stats.Add("partition", "msg:2", 2)
 	stats.Add("partition", "msg:3", 2)
-	stats.Add("partition", "msg:1", 2)
 	stats.Add("partition2", "tango:1", 1)
 	stats.Add("partition2", "tango:2", 2)
 	data, err := stats.Serialize()
 	assert.Nil(t, err, "serialization error should be nil")
 	assert.NotEmpty(t, data, "serialized data should not be empty")
 
-	t.Logf("Serialized to: %s", string(data))
-	newStats := New()
-	err = newStats.Deserialize(data)
-	assert.Nil(t, err, "deserialization error should be nil")
+	jsonData, err := json.Marshal(stats)
+	assert.Nil(t, err, "json marshing error should be nil")
+	assert.NotEmpty(t, jsonData, "json data should not be empty")
 
-	assert.Equal(t, []string{"partition", "partition2"}, newStats.Partitions(), "partitions should be deserialized")
+	checkDeserializedStats := func(t *testing.T, newStats *Stats) {
+		assert.Equal(t, []string{"partition", "partition2"}, newStats.Partitions(), "partitions should be deserialized")
 
-	partition1Events, ok := newStats.Events("partition")
-	assert.True(t, ok, "partition events shoud be retrieved")
-	assert.Equal(t, []string{"msg:1", "msg:2", "msg:3"}, partition1Events, "partition events should be deserialized")
+		partition1Events, ok := newStats.Events("partition")
+		assert.True(t, ok, "partition events shoud be retrieved")
+		assert.Equal(t, []string{"msg:1", "msg:2", "msg:3"}, partition1Events, "partition events should be deserialized")
 
-	eventsVals := map[string][]uint64{
-		"msg:1": {1, 2},
-		"msg:2": {2},
-		"msg:3": {2},
+		eventsVals := map[string][]uint64{
+			"msg:1": {1, 2},
+			"msg:2": {2},
+			"msg:3": {2},
+		}
+		for name, expectedVals := range eventsVals {
+			vals, ok := newStats.Values("partition", name)
+			assert.Truef(t, ok, "partition/%s values shoud be retrieved", name)
+			assert.Equal(t, expectedVals, vals, "partition/%s values should match", name)
+		}
+
+		partition2Events, ok := newStats.Events("partition2")
+		assert.True(t, ok, "partition2 events shoud be retrieved")
+		assert.Equal(t, []string{"tango:1", "tango:2"}, partition2Events, "partition events should be deserialized")
+
+		eventsVals = map[string][]uint64{
+			"tango:1": {1},
+			"tango:2": {2},
+		}
+		for name, expectedVals := range eventsVals {
+			vals, ok := newStats.Values("partition2", name)
+			assert.Truef(t, ok, "partition2/%s values shoud be retrieved", name)
+			assert.Equal(t, expectedVals, vals, "partition2/%s values should match", name)
+		}
 	}
-	for name, expectedVals := range eventsVals {
-		vals, ok := newStats.Values("partition", name)
-		assert.Truef(t, ok, "partition/%s values shoud be retrieved", name)
-		assert.Equal(t, expectedVals, vals, "partition/%s values should match", name)
-	}
+	t.Run("default deserialization", func(t *testing.T) {
+		newStats := New()
+		err = newStats.Deserialize(data)
+		assert.Nil(t, err, "deserialization error should be nil")
+		t.Log(string(data))
+		checkDeserializedStats(t, newStats)
 
-	partition2Events, ok := newStats.Events("partition2")
-	assert.True(t, ok, "partition2 events shoud be retrieved")
-	assert.Equal(t, []string{"tango:1", "tango:2"}, partition2Events, "partition events should be deserialized")
+	})
 
-	eventsVals = map[string][]uint64{
-		"tango:1": {1},
-		"tango:2": {2},
-	}
-	for name, expectedVals := range eventsVals {
-		vals, ok := newStats.Values("partition2", name)
-		assert.Truef(t, ok, "partition2/%s values shoud be retrieved", name)
-		assert.Equal(t, expectedVals, vals, "partition2/%s values should match", name)
-	}
+	t.Run("json deserialization", func(t *testing.T) {
+		jsonStats := New()
+		err = json.Unmarshal(jsonData, jsonStats)
+		assert.Nil(t, err, "json unmarshalling error should be nil")
+		checkDeserializedStats(t, jsonStats)
+	})
 }
